@@ -36,7 +36,7 @@ namespace FileUploadDemo
         /// <summary>
         /// 文件存放路径，后期替换为配置文件加载方式
         /// </summary>
-        const string _visualPath = "/PlatformFile/files/";
+        const string _visualPath = "/UploadFiles/files/";
 
 
         #region 获取指定文件的已上传的文件块

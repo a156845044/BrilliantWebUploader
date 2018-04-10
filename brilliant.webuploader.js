@@ -61,6 +61,8 @@ document.write(" <script language=\"javascript\" src=\"" + WEBUPLOADER_BASE_URL 
             disableGlobalDnd: true,//是否禁掉整个页面的拖拽功能，如果不禁用，图片拖进来的时候会默认被浏览器打开。
             threads: 1, //上传并发数
             formData: {},//附带属性
+            folder: "/UploadFiles/files/",//默认上传的文件夹
+            host: "http://localhost:6009/",
             fileNumLimit: 300,//单次上传最大文件数量,{int} [可选] [默认值：undefined] 验证文件总数量, 超出则不允许加入队列。
             fileSizeLimit: undefined,//{int} [可选] [默认值：undefined] 验证文件总大小是否超出限制, 超出则不允许加入队列。
             fileSingleSizeLimit: undefined,//{int} [可选] [默认值：undefined] 验证单个文件大小是否超出限制, 超出则不允许加入队列。
@@ -223,92 +225,92 @@ document.write(" <script language=\"javascript\" src=\"" + WEBUPLOADER_BASE_URL 
 
             var $wrap = $("#" + _divId + "  " + settings.dnd),
 
-       // 文件容器
-           $queue = $('<ul class="filelist"></ul>')
-               .appendTo($this.find('.queueList')),
-        //上传成功
-         $succqueue = $('<ul class="succ-filelist" style=\"display: none;\"></ul>')
-               .appendTo($this.find('.queueList')),
+                // 文件容器
+                $queue = $('<ul class="filelist"></ul>')
+                    .appendTo($this.find('.queueList')),
+                //上传成功
+                $succqueue = $('<ul class="succ-filelist" style=\"display: none;\"></ul>')
+                    .appendTo($this.find('.queueList')),
 
-       // 状态栏，包括进度和控制按钮
-           $statusBar = $this.find('.statusBar'),
+                // 状态栏，包括进度和控制按钮
+                $statusBar = $this.find('.statusBar'),
 
-       // 文件总体选择信息。
-           $info = $statusBar.find('.info'),
+                // 文件总体选择信息。
+                $info = $statusBar.find('.info'),
 
-       // 上传按钮
-           $upload = $this.find('.uploadBtn'),
+                // 上传按钮
+                $upload = $this.find('.uploadBtn'),
 
-       // 没选择文件之前的内容。
-           $placeHolder = $this.find('.placeholder'),
+                // 没选择文件之前的内容。
+                $placeHolder = $this.find('.placeholder'),
 
-           $progress = $statusBar.find('.progress').hide(),
+                $progress = $statusBar.find('.progress').hide(),
 
-       // 添加的文件数量
-           fileCount = 0,
+                // 添加的文件数量
+                fileCount = 0,
 
-       // 添加的文件总大小
-           fileSize = 0,
+                // 添加的文件总大小
+                fileSize = 0,
 
-       // 优化retina, 在retina下这个值是2
-           ratio = window.devicePixelRatio || 1,
+                // 优化retina, 在retina下这个值是2
+                ratio = window.devicePixelRatio || 1,
 
-       // 缩略图大小
-           thumbnailWidth = 110 * ratio,
-           thumbnailHeight = 110 * ratio,
+                // 缩略图大小
+                thumbnailWidth = 110 * ratio,
+                thumbnailHeight = 110 * ratio,
 
-       // 可能有pedding, ready, uploading, confirm, done.
-           state = 'pedding',
+                // 可能有pedding, ready, uploading, confirm, done.
+                state = 'pedding',
 
-       // 所有文件的进度信息，key为file id
-           percentages = {},
-       // 判断浏览器是否支持图片的base64
-           isSupportBase64 = (function () {
-               var data = new Image();
-               var support = true;
-               data.onload = data.onerror = function () {
-                   if (this.width != 1 || this.height != 1) {
-                       support = false;
-                   }
-               }
-               data.src = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
-               return support;
-           })(),
+                // 所有文件的进度信息，key为file id
+                percentages = {},
+                // 判断浏览器是否支持图片的base64
+                isSupportBase64 = (function () {
+                    var data = new Image();
+                    var support = true;
+                    data.onload = data.onerror = function () {
+                        if (this.width != 1 || this.height != 1) {
+                            support = false;
+                        }
+                    }
+                    data.src = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
+                    return support;
+                })(),
 
-       // 检测是否已经安装flash，检测flash的版本
-           flashVersion = (function () {
-               var version;
+                // 检测是否已经安装flash，检测flash的版本
+                flashVersion = (function () {
+                    var version;
 
-               try {
-                   version = navigator.plugins['Shockwave Flash'];
-                   version = version.description;
-               } catch (ex) {
-                   try {
-                       version = new ActiveXObject('ShockwaveFlash.ShockwaveFlash')
-                               .GetVariable('$version');
-                   } catch (ex2) {
-                       version = '0.0';
-                   }
-               }
-               version = version.match(/\d+/g);
-               return parseFloat(version[0] + '.' + version[1], 10);
-           })(),
+                    try {
+                        version = navigator.plugins['Shockwave Flash'];
+                        version = version.description;
+                    } catch (ex) {
+                        try {
+                            version = new ActiveXObject('ShockwaveFlash.ShockwaveFlash')
+                                .GetVariable('$version');
+                        } catch (ex2) {
+                            version = '0.0';
+                        }
+                    }
+                    version = version.match(/\d+/g);
+                    return parseFloat(version[0] + '.' + version[1], 10);
+                })(),
 
-           supportTransition = (function () {
-               var s = document.createElement('p').style,
-                   r = 'transition' in s ||
-                           'WebkitTransition' in s ||
-                           'MozTransition' in s ||
-                           'msTransition' in s ||
-                           'OTransition' in s;
-               s = null;
-               return r;
-           })(),
+                supportTransition = (function () {
+                    var s = document.createElement('p').style,
+                        r = 'transition' in s ||
+                            'WebkitTransition' in s ||
+                            'MozTransition' in s ||
+                            'msTransition' in s ||
+                            'OTransition' in s;
+                    s = null;
+                    return r;
+                })(),
 
-       // WebUploader实例
-           uploader,
-           GUID = WebUploader.Base.guid(); //当前页面是生成的GUID作为标示
-            var formData = { uid: GUID };
+                // WebUploader实例
+                uploader,
+                GUID = WebUploader.Base.guid(); //当前页面是生成的GUID作为标示
+            var formData = { uid: GUID, folder: settings.folder, host: settings.host };
             formData = $.extend({}, settings.formData, formData);////由于Http的无状态特征，在往服务器发送数据过程传递一个进入当前页面是生成的GUID作为标示
 
             var pick = { id: "#" + _divId + "-filePicker" };//指定选择文件的按钮容器，不指定则不创建按钮。
@@ -339,7 +341,7 @@ document.write(" <script language=\"javascript\" src=\"" + WEBUPLOADER_BASE_URL 
                         var swf = WEBUPLOADER_BASE_URL + 'swf/expressInstall.swf';
                         // insert flash object
                         var html = '<object type="application/' +
-                                'x-shockwave-flash" data="' + swf + '" ';
+                            'x-shockwave-flash" data="' + swf + '" ';
 
                         if (WebUploader.browser.ie) {
                             html += 'classid="clsid:d27cdb6e-ae6d-11cf-96b8-444553540000" ';
@@ -349,7 +351,7 @@ document.write(" <script language=\"javascript\" src=\"" + WEBUPLOADER_BASE_URL 
                             '<param name="movie" value="' + swf + '" />' +
                             '<param name="wmode" value="transparent" />' +
                             '<param name="allowscriptaccess" value="always" />' +
-                        '</object>';
+                            '</object>';
 
                         container.html(html);
 
@@ -408,20 +410,27 @@ document.write(" <script language=\"javascript\" src=\"" + WEBUPLOADER_BASE_URL 
                         if (settings.devMode) {
                             console.info('md5 result:', val, file);
                         }
-                        $.extend(uploader.options.formData, { md5: val });
+
+                        var data = $.extend(uploader.options.formData, { md5: val, ext: file.ext, folder: settings.folder, host: settings.host });
 
                         var fileObj = $('#' + file.id);
 
                         $.ajax({
                             url: settings.getMaxChunkServerURL,
                             async: true,
-                            data: { md5: val, ext: file.ext },
+                            data: data,
                             success: function (response) {
                                 if (settings.devMode) {
                                     console.info('response', response);
                                 }
                                 var res = JSON.parse(response);
-                                Global.FileQueueds.push({ id: file.id, name: file.name, md5: val, size: file.size, type: file.type, lastModifiedDate: file.lastModifiedDate, ext: file.ext, path: res.path, chunk: res.chunk, exists: res.exists });
+                                Global.FileQueueds.push({
+                                    id: file.id, name: file.name, md5: val, size: file.size, type: file.type,
+                                    lastModifiedDate: file.lastModifiedDate, ext: file.ext,
+                                    path: res.path, chunk: res.chunk,
+                                    exists: res.exists,
+                                    fullPath: res.fullPath
+                                });
                                 if (settings.devMode) {
                                     console.info('fileCheckMaxChunk', file, res.chunk);
                                 }
@@ -441,7 +450,7 @@ document.write(" <script language=\"javascript\" src=\"" + WEBUPLOADER_BASE_URL 
                 var denied = false,
                     len = items.length,
                     i = 0,
-                // 修改js类型
+                    // 修改js类型
                     unAllowed = 'text/plain;application/javascript';
 
                 for (; i < len; i++) {
@@ -471,11 +480,11 @@ document.write(" <script language=\"javascript\" src=\"" + WEBUPLOADER_BASE_URL 
             // 当有文件添加进来时执行，负责view的创建
             function addFile(file) {
                 var $li = $('<li id="' + file.id + '">' +
-                        '<p class="title" title="' + file.name + '">' + file.name + '</p>' +
-                        '<p class="imgWrap"></p>' +
-                        '<p class="progress"><span></span></p>' +
-                        '<p class="progress_check" data-checkedcomplete="false">正在验证文件：<span>0</span>%</p>' +
-                        '</li>'),
+                    '<p class="title" title="' + file.name + '">' + file.name + '</p>' +
+                    '<p class="imgWrap"></p>' +
+                    '<p class="progress"><span></span></p>' +
+                    '<p class="progress_check" data-checkedcomplete="false">正在验证文件：<span>0</span>%</p>' +
+                    '</li>'),
 
                     $btns = $('<div class="file-panel">' +
                         '<span class="cancel">删除</span>' +
@@ -656,7 +665,7 @@ document.write(" <script language=\"javascript\" src=\"" + WEBUPLOADER_BASE_URL 
 
                 if (state === 'ready') {
                     text = '选中' + fileCount + '个文件，共' +
-                            WebUploader.formatSize(fileSize) + '。';
+                        WebUploader.formatSize(fileSize) + '。';
                 } else if (state === 'confirm') {
                     stats = uploader.getStats();
                     if (stats.uploadFailNum) {
@@ -667,8 +676,8 @@ document.write(" <script language=\"javascript\" src=\"" + WEBUPLOADER_BASE_URL 
                 } else {
                     stats = uploader.getStats();
                     text = '共' + fileCount + '个（' +
-                            WebUploader.formatSize(fileSize) +
-                            '），已上传' + stats.successNum + '个';
+                        WebUploader.formatSize(fileSize) +
+                        '），已上传' + stats.successNum + '个';
 
                     if (stats.uploadFailNum) {
                         text += '，失败' + stats.uploadFailNum + '个';
@@ -830,6 +839,7 @@ document.write(" <script language=\"javascript\" src=\"" + WEBUPLOADER_BASE_URL 
                 json.extension = files.ext;
                 json.md5 = files.md5;
                 json.type = file.type;
+                json.fullPath = files.fullPath;
                 json.lastModifiedDate = file.lastModifiedDate;
 
                 var md5 = files.md5;
@@ -849,27 +859,28 @@ document.write(" <script language=\"javascript\" src=\"" + WEBUPLOADER_BASE_URL 
                 if (response && response.code >= 0) {
                     var dataObj = response;
                     if (dataObj.chunked) {
-                        $.post(settings.mergeFilesServerURL, { md5: md5, ext: files.ext },
-                        function (data) {
-                            if (data.hasError) {
-                                alert('文件合并失败！');
-                            } else {
+                        var data = $.extend(uploader.options.formData, { md5: val, ext: file.ext, folder: settings.folder, host: settings.host });
+                        $.post(settings.mergeFilesServerURL, data,
+                            function (data) {
+                                if (data.hasError) {
+                                    alert('文件合并失败！');
+                                } else {
 
-                                //alert(decodeURIComponent(data.savePath));
-                                if (settings.devMode) {
-                                    console.info('上传文件完成并合并成功，触发回调事件');
+                                    //alert(decodeURIComponent(data.savePath));
+                                    if (settings.devMode) {
+                                        console.info('上传文件完成并合并成功，触发回调事件');
+                                    }
+                                    _uploadSuccessCallback(that, json);//回调函数
+                                    if (settings.onUploaded) {//上传完毕事件订阅
+                                        file.name = files.name;
+                                        file.path = files.path;
+                                        file.size = files.size;
+                                        file.extension = files.ext;
+                                        file.md5 = files.md5;
+                                        settings.onUploaded(file, md5);
+                                    }
                                 }
-                                _uploadSuccessCallback(that, json);//回调函数
-                                if (settings.onUploaded) {//上传完毕事件订阅
-                                    file.name = files.name;
-                                    file.path = files.path;
-                                    file.size = files.size;
-                                    file.extension = files.ext;
-                                    file.md5 = files.md5;
-                                    settings.onUploaded(file, md5);
-                                }
-                            }
-                        });
+                            });
                     }
                     else {
 
@@ -951,38 +962,38 @@ document.write(" <script language=\"javascript\" src=\"" + WEBUPLOADER_BASE_URL 
             "before-send": "beforeSend",
             "after-send-file": "afterSendFile"
         }, {
-            beforeSendFile: function (file) {
-                if (model.options.devMode) {
-                    console.info('beforeSendFile', Global.FileQueueds, file);
-                }
-                $.each(Global.FileQueueds, function (idx, row) {
-                    if (row.id == file.id) {
-                        _chunk = row.chunk;
+                beforeSendFile: function (file) {
+                    if (model.options.devMode) {
+                        console.info('beforeSendFile', Global.FileQueueds, file);
                     }
-                });
-                //_chunk = Global.FileQueueds.find(f=>f.id == file.id).chunk;
-            },
-            beforeSend: function (block) {
-                var blob = block.blob.getSource(),
-                    deferred = $.Deferred();
-                if (model.options.devMode) {
-                    console.info('blob', block);
-                }
+                    $.each(Global.FileQueueds, function (idx, row) {
+                        if (row.id == file.id) {
+                            _chunk = row.chunk;
+                        }
+                    });
+                    //_chunk = Global.FileQueueds.find(f=>f.id == file.id).chunk;
+                },
+                beforeSend: function (block) {
+                    var blob = block.blob.getSource(),
+                        deferred = $.Deferred();
+                    if (model.options.devMode) {
+                        console.info('blob', block);
+                    }
 
-                //根据md5与服务端匹配，如果重复，则跳过。
-                if (block.chunk < _chunk) {
-                    deferred.reject();
-                }
-                else {
-                    deferred.resolve();
-                }
+                    //根据md5与服务端匹配，如果重复，则跳过。
+                    if (block.chunk < _chunk) {
+                        deferred.reject();
+                    }
+                    else {
+                        deferred.resolve();
+                    }
 
-                return deferred.promise();
+                    return deferred.promise();
 
-            },
-            afterSendFile: function (file) {
-            }
-        });
+                },
+                afterSendFile: function (file) {
+                }
+            });
 
         return model._render();
     };

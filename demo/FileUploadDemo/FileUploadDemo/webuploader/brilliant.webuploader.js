@@ -61,8 +61,8 @@ document.write(" <script language=\"javascript\" src=\"" + WEBUPLOADER_BASE_URL 
             disableGlobalDnd: true,//是否禁掉整个页面的拖拽功能，如果不禁用，图片拖进来的时候会默认被浏览器打开。
             threads: 1, //上传并发数
             formData: {},//附带属性
-            folder: "/PlatformFile/files/",//默认上传的文件夹
-            host: "https://www.lansea.xyz:10005/",
+            folder: "/UploadFiles/files/",//默认上传的文件夹
+            host: "http://localhost:6009/",
             fileNumLimit: 300,//单次上传最大文件数量,{int} [可选] [默认值：undefined] 验证文件总数量, 超出则不允许加入队列。
             fileSizeLimit: undefined,//{int} [可选] [默认值：undefined] 验证文件总大小是否超出限制, 超出则不允许加入队列。
             fileSingleSizeLimit: undefined,//{int} [可选] [默认值：undefined] 验证单个文件大小是否超出限制, 超出则不允许加入队列。
