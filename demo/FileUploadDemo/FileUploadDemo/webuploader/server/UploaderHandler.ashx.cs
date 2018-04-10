@@ -36,7 +36,7 @@ namespace FileUploadDemo
         /// <summary>
         /// 文件存放路径，后期替换为配置文件加载方式
         /// </summary>
-        const string _visualPath = "/UploadFiles/files/";
+        const string _visualPath = "/PlatformFile/files/";
 
 
         #region 获取指定文件的已上传的文件块
@@ -46,7 +46,15 @@ namespace FileUploadDemo
         /// <returns></returns>
         public void GetMaxChunk(HttpContext context)
         {
-            string root = context.Server.MapPath(_visualPath);
+            string host = context.Request["host"];
+
+            string visualFloder = context.Request["folder"];
+            string visualPath = _visualPath;
+            if (!string.IsNullOrWhiteSpace(visualFloder))
+            {
+                visualPath = visualFloder;
+            }
+            string root = context.Server.MapPath(visualPath);
 
             AttachInfo attach = new AttachInfo();//待返回的数据
 
@@ -64,7 +72,12 @@ namespace FileUploadDemo
                     attach.errormsg = "";
                     attach.exists = true;
                     attach.chunk = Int32.MaxValue;//如果文件存在，则返回整型的最大值，插件自动识别，实现秒传
-                    attach.path = string.Format("{0}{1}", _visualPath, fileName);
+                    attach.path = string.Format("{0}{1}", visualPath, fileName);
+                    if (!string.IsNullOrWhiteSpace(host))
+                    {
+                        attach.fullPath = string.Format("{0}/{1}{2}", host.Trim().TrimEnd('/'), visualPath.Trim().TrimStart('/'), fileName);
+                    }
+
                     attach.extension = ext;
                     attach.md5 = md5;
                     attach.size = file.Length;
@@ -89,6 +102,11 @@ namespace FileUploadDemo
                     attach.path = string.Format("{0}{1}", _visualPath, fileName);
                     attach.extension = ext;
                     attach.md5 = md5;
+                    if (!string.IsNullOrWhiteSpace(host))
+                    {
+                        attach.fullPath = string.Format("{0}/{1}{2}", host.Trim().TrimEnd('/'), visualPath.Trim().TrimStart('/'), fileName);
+                    }
+
                     attach.size = file.Length;
                 }
                 context.Response.Write(JsonConvert.SerializeObject(attach));
@@ -103,6 +121,10 @@ namespace FileUploadDemo
                 attach.extension = ext;
                 attach.md5 = md5;
                 attach.size = 0;
+                if (!string.IsNullOrWhiteSpace(host))
+                {
+                    attach.fullPath = string.Format("{0}/{1}{2}", host.Trim().TrimEnd('/'), visualPath.Trim().TrimStart('/'), fileName);
+                }
                 context.Response.Write(JsonConvert.SerializeObject(attach));
             }
         }
@@ -116,8 +138,15 @@ namespace FileUploadDemo
         /// <returns></returns>
         public void Upload(HttpContext context)
         {
+
+            string visualFloder = context.Request.Form["folder"];
+            string visualPath = _visualPath;
+            if (!string.IsNullOrWhiteSpace(visualFloder))
+            {
+                visualPath = visualFloder;
+            }
             HttpPostedFile file = context.Request.Files[0];
-            string root = context.Server.MapPath(_visualPath);
+            string root = context.Server.MapPath(visualPath);
 
             AttachInfo attach = new AttachInfo();//待返回的数据
 
@@ -214,7 +243,13 @@ namespace FileUploadDemo
         /// <returns></returns>
         public void MergeFiles(HttpContext context)
         {
-            string root = context.Server.MapPath(_visualPath);
+            string visualFloder = context.Request["folder"];
+            string visualPath = _visualPath;
+            if (!string.IsNullOrWhiteSpace(visualFloder))
+            {
+                visualPath = visualFloder;
+            }
+            string root = context.Server.MapPath(visualPath);
 
             string guid = context.Request["md5"];
             string ext = context.Request["ext"];
@@ -255,7 +290,6 @@ namespace FileUploadDemo
                 attach.errormsg = "";
                 attach.chunked = true;//进行了分片处理
                 attach.hasError = false;
-               // attach.path = System.Web.HttpUtility.UrlEncode(targetPath);//文件扩展名
                 context.Response.Write(JsonConvert.SerializeObject(attach));
             }
             else
@@ -264,7 +298,6 @@ namespace FileUploadDemo
                 attach.errormsg = "";
                 attach.chunked = true;//进行了分片处理
                 attach.hasError = true;
-                //attach.path = System.Web.HttpUtility.UrlEncode(targetPath);//文件扩展名
                 context.Response.Write(JsonConvert.SerializeObject(attach));
             }
         }
@@ -362,5 +395,10 @@ namespace FileUploadDemo
         /// 是否出现错误
         /// </summary>
         public bool hasError { get; set; }
+
+        /// <summary>
+        /// 全路径
+        /// </summary>
+        public string fullPath { get; set; }
     }
 }
