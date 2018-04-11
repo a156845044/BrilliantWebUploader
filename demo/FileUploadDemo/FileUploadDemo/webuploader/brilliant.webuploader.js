@@ -859,7 +859,7 @@ document.write(" <script language=\"javascript\" src=\"" + WEBUPLOADER_BASE_URL 
                 if (response && response.code >= 0) {
                     var dataObj = response;
                     if (dataObj.chunked) {
-                        var data = $.extend(uploader.options.formData, { md5: val, ext: file.ext, folder: settings.folder, host: settings.host });
+                        var data = $.extend(uploader.options.formData, { md5: md5, ext: file.ext, folder: settings.folder, host: settings.host });
                         $.post(settings.mergeFilesServerURL, data,
                             function (data) {
                                 if (data.hasError) {
