@@ -53,16 +53,19 @@ document.write(" <script language=\"javascript\" src=\"" + WEBUPLOADER_BASE_URL 
             baseURL: WEBUPLOADER_BASE_URL,
             //swf所在路径
             swf: WEBUPLOADER_BASE_URL + 'swf/Uploader.swf',
-            uploadServerURL: WEBUPLOADER_BASE_URL + 'server/UploaderHandler.ashx?action=upload',//处理文件上传的地址
-            getMaxChunkServerURL: WEBUPLOADER_BASE_URL + 'server/UploaderHandler.ashx?action=getmaxchunk',//获取已上传文件的块数量的接口地址
-            mergeFilesServerURL: WEBUPLOADER_BASE_URL + "server/UploaderHandler.ashx?action=mergefiles", //进行文件合并的接口地址
+            uploadServerURL: WEBUPLOADER_BASE_URL + 'server/UploaderHandler.ashx?action=upload&radmom=' + Math.random(),//处理文件上传的地址
+            getMaxChunkServerURL: WEBUPLOADER_BASE_URL + 'server/UploaderHandler.ashx?action=getmaxchunk&radmom=' + Math.random(),//获取已上传文件的块数量的接口地址
+            mergeFilesServerURL: WEBUPLOADER_BASE_URL + "server/UploaderHandler.ashx?action=mergefiles&radmom=" + Math.random(), //进行文件合并的接口地址
             chunked: true, //分片处理大文件
             chunkSize: 2 * Math.pow(1024, 2),//2M 分片大小
             disableGlobalDnd: true,//是否禁掉整个页面的拖拽功能，如果不禁用，图片拖进来的时候会默认被浏览器打开。
             threads: 1, //上传并发数
             formData: {},//附带属性
-            folder: "/UploadFiles/files/",//默认上传的文件夹
-            host: "http://localhost:6009/",
+            preFolder: "/UploadFiles/",//前置文件夹
+            rename: true,//是否重命名
+            folder: "files/",//默认上传的文件夹
+            host: "http://localhost:58991/",
+            accept: null,//{Arroy} [可选] [默认值：null] 指定接受哪些类型的文件。 由于目前还有ext转mimeType表，所以这里需要分开指定。title {String} 文字描述 extensions {String } 允许的文件后缀，不带点，多个用逗号分割。 mimeTypes {String } 多个用逗号分割。 如： {title: 'Images',extensions: 'gif,jpg,jpeg,bmp,png',mimeTypes: 'image/*'}
             fileNumLimit: 300,//单次上传最大文件数量,{int} [可选] [默认值：undefined] 验证文件总数量, 超出则不允许加入队列。
             fileSizeLimit: undefined,//{int} [可选] [默认值：undefined] 验证文件总大小是否超出限制, 超出则不允许加入队列。
             fileSingleSizeLimit: undefined,//{int} [可选] [默认值：undefined] 验证单个文件大小是否超出限制, 超出则不允许加入队列。
@@ -310,7 +313,7 @@ document.write(" <script language=\"javascript\" src=\"" + WEBUPLOADER_BASE_URL 
                 // WebUploader实例
                 uploader,
                 GUID = WebUploader.Base.guid(); //当前页面是生成的GUID作为标示
-            var formData = { uid: GUID, folder: settings.folder, host: settings.host };
+            var formData = { uid: GUID, folder: settings.preFolder + settings.folder, host: settings.host, rename: settings.rename };
             formData = $.extend({}, settings.formData, formData);////由于Http的无状态特征，在往服务器发送数据过程传递一个进入当前页面是生成的GUID作为标示
 
             var pick = { id: "#" + _divId + "-filePicker" };//指定选择文件的按钮容器，不指定则不创建按钮。
@@ -378,6 +381,7 @@ document.write(" <script language=\"javascript\" src=\"" + WEBUPLOADER_BASE_URL 
                 dnd: dnd,//指定Drag And Drop拖拽的容器，如果不指定，则不启动
                 paste: paste,//指定监听paste事件的容器，如果不指定，不启用此功能。此功能为通过粘贴来添加截屏的图片。建议设置为document.body
                 swf: settings.swf,
+                accept: settings.accept,
                 chunked: settings.chunked, //分片处理大文件
                 chunkSize: settings.chunkSize,//2M 分片大小
                 server: settings.uploadServerURL,
@@ -410,8 +414,7 @@ document.write(" <script language=\"javascript\" src=\"" + WEBUPLOADER_BASE_URL 
                         if (settings.devMode) {
                             console.info('md5 result:', val, file);
                         }
-
-                        var data = $.extend(uploader.options.formData, { md5: val, ext: file.ext, folder: settings.folder, host: settings.host });
+                        var data = $.extend(uploader.options.formData, { md5: val, ext: file.ext, fileName: file.name, folder: settings.preFolder + settings.folder, host: settings.host, rename: settings.rename });
 
                         var fileObj = $('#' + file.id);
 
@@ -429,7 +432,8 @@ document.write(" <script language=\"javascript\" src=\"" + WEBUPLOADER_BASE_URL 
                                     lastModifiedDate: file.lastModifiedDate, ext: file.ext,
                                     path: res.path, chunk: res.chunk,
                                     exists: res.exists,
-                                    fullPath: res.fullPath
+                                    fullPath: res.fullPath,
+                                    uid: WebUploader.Base.guid()
                                 });
                                 if (settings.devMode) {
                                     console.info('fileCheckMaxChunk', file, res.chunk);
@@ -842,8 +846,6 @@ document.write(" <script language=\"javascript\" src=\"" + WEBUPLOADER_BASE_URL 
                 json.fullPath = files.fullPath;
                 json.lastModifiedDate = file.lastModifiedDate;
 
-                var md5 = files.md5;
-
                 if (files.exists) {
                     _uploadSuccessCallback(that, json);//回调函数
                     if (settings.onUploaded) {//上传完毕事件订阅
@@ -852,14 +854,14 @@ document.write(" <script language=\"javascript\" src=\"" + WEBUPLOADER_BASE_URL 
                         file.size = files.size;
                         file.extension = files.ext;
                         file.md5 = files.md5;
-                        settings.onUploaded(file, md5);
+                        settings.onUploaded(file, files.md5);
                     }
                 }
 
                 if (response && response.code >= 0) {
                     var dataObj = response;
                     if (dataObj.chunked) {
-                        var data = $.extend(uploader.options.formData, { md5: md5, ext: file.ext, folder: settings.folder, host: settings.host });
+                        var data = $.extend(uploader.options.formData, { md5: files.md5, ext: file.ext, fileName: file.name, folder: settings.preFolder + settings.folder, host: settings.host, rename: settings.rename });
                         $.post(settings.mergeFilesServerURL, data,
                             function (data) {
                                 if (data.hasError) {
@@ -877,7 +879,7 @@ document.write(" <script language=\"javascript\" src=\"" + WEBUPLOADER_BASE_URL 
                                         file.size = files.size;
                                         file.extension = files.ext;
                                         file.md5 = files.md5;
-                                        settings.onUploaded(file, md5);
+                                        settings.onUploaded(file, files.md5);
                                     }
                                 }
                             });
@@ -891,7 +893,7 @@ document.write(" <script language=\"javascript\" src=\"" + WEBUPLOADER_BASE_URL 
                             file.size = files.size;
                             file.extension = files.ext;
                             file.md5 = files.md5;
-                            settings.onUploaded(file, md5);
+                            settings.onUploaded(file, files.md5);
                         }
                         if (settings.devMode) {
                             console.info('上传文件完成，不需要合并，触发回调事件');
@@ -963,6 +965,13 @@ document.write(" <script language=\"javascript\" src=\"" + WEBUPLOADER_BASE_URL 
             "after-send-file": "afterSendFile"
         }, {
                 beforeSendFile: function (file) {
+                    var files = Global.GetFileQueued(file.id);
+                    var formData = uploader.option('formData');
+                    formData.ext = files.ext;
+                    formData.fileName = files.name;
+                    formData.md5 = files.md5;
+                    formData.uid = files.uid;
+                    uploader.option('formData', formData);
                     if (model.options.devMode) {
                         console.info('beforeSendFile', Global.FileQueueds, file);
                     }

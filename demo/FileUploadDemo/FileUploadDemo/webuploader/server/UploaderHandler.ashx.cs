@@ -46,8 +46,9 @@ namespace FileUploadDemo
         /// <returns></returns>
         public void GetMaxChunk(HttpContext context)
         {
+            bool rename = true;
             string host = context.Request["host"];
-
+            bool.TryParse(context.Request["rename"], out rename);
             string visualFloder = context.Request["folder"];
             string visualPath = _visualPath;
             if (!string.IsNullOrWhiteSpace(visualFloder))
@@ -63,6 +64,10 @@ namespace FileUploadDemo
             int chunk = 0;
 
             var fileName = md5 + "." + ext;
+            if (!rename)
+            {
+                fileName = context.Request["fileName"];
+            }
             try
             {
                 FileInfo file = new FileInfo(root + fileName);
@@ -138,7 +143,8 @@ namespace FileUploadDemo
         /// <returns></returns>
         public void Upload(HttpContext context)
         {
-
+            bool rename = true;
+            bool.TryParse(context.Request.Form["rename"], out rename);
             string visualFloder = context.Request.Form["folder"];
             string visualPath = _visualPath;
             if (!string.IsNullOrWhiteSpace(visualFloder))
@@ -149,7 +155,8 @@ namespace FileUploadDemo
             string root = context.Server.MapPath(visualPath);
 
             AttachInfo attach = new AttachInfo();//待返回的数据
-
+            string md5 = context.Request["md5"];
+            string ext = Path.GetExtension(file.FileName);
 
             //检查上传的物理路径是否存在，不存在则创建
             if (!Directory.Exists(root))
@@ -164,7 +171,6 @@ namespace FileUploadDemo
                 int chunk = Convert.ToInt32(context.Request.Form["chunk"]);//当前分片在上传分片中的顺序（从0开始）
                 int chunks = Convert.ToInt32(context.Request.Form["chunks"]);//总分片数
                 //根据GUID创建用该GUID命名的临时文件夹
-                //string folder = Server.MapPath("~/UploadFiles/" + Request["md5"] + "/");
                 string folder = root + "chunk\\" + context.Request["md5"] + "\\";
                 string path = folder + chunk;
 
@@ -224,13 +230,16 @@ namespace FileUploadDemo
             }
             else//没有分片直接保存
             {
-                string path = root + context.Request["md5"] + Path.GetExtension(context.Request.Files[0].FileName);
-                context.Request.Files[0].SaveAs(path);
-
+                string path = root + md5 + ext;
+                if (!rename)
+                {
+                    path = root + file.FileName;
+                }
+                file.SaveAs(path);
                 attach.code = 0;//成功
                 attach.errormsg = "";
                 attach.chunked = false;//直接保存，没有进行分片处理
-                attach.extension = Path.GetExtension(file.FileName);//文件扩展名
+                attach.extension = ext;//文件扩展名
                 context.Response.Write(JsonConvert.SerializeObject(attach));
             }
         }
@@ -243,6 +252,8 @@ namespace FileUploadDemo
         /// <returns></returns>
         public void MergeFiles(HttpContext context)
         {
+            bool rename = true;
+            bool.TryParse(context.Request.Form["rename"], out rename);
             string visualFloder = context.Request["folder"];
             string visualPath = _visualPath;
             if (!string.IsNullOrWhiteSpace(visualFloder))
@@ -255,6 +266,10 @@ namespace FileUploadDemo
             string ext = context.Request["ext"];
             string sourcePath = Path.Combine(root, "chunk\\" + guid + "\\");//源数据文件夹
             string targetPath = Path.Combine(root, string.Format("{0}.{1}", guid, ext));//合并后的文件
+            if (!rename)
+            {
+                targetPath = Path.Combine(root, context.Request["fileName"]);//合并后的文件
+            }
 
             AttachInfo attach = new AttachInfo();//待返回的数据
 
